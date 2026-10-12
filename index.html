@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#dff7ff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#102c3a" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="data:," />
+  <title>Fruit Invaders</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page: #dff7ff;
+      --page-2: #fff6cf;
+      --ink: #173f4b;
+      --muted: #4b6972;
+      --panel: rgba(255,255,255,.78);
+      --panel-solid: #f8fdff;
+      --line: rgba(23,63,75,.16);
+      --accent: #ff6b4a;
+      --accent-dark: #bb392a;
+      --sun: #ffd34e;
+      --aqua: #26b8bb;
+      --button-text: #16323a;
+      --shadow: rgba(38,91,106,.2);
+      --focus: #166f83;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #102c3a;
+        --page-2: #193b46;
+        --ink: #effcff;
+        --muted: #bad3d8;
+        --panel: rgba(11,38,49,.82);
+        --panel-solid: #183b48;
+        --line: rgba(235,252,255,.18);
+        --accent: #ff8166;
+        --accent-dark: #ffb19f;
+        --sun: #ffd85e;
+        --aqua: #5bd9d5;
+        --button-text: #102e38;
+        --shadow: rgba(0,0,0,.3);
+        --focus: #9cebf0;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100svh;
+      overflow-x: hidden;
+      font-family: "Avenir Next", Avenir, "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 8%, rgba(255,255,255,.62) 0 7%, transparent 7.3%),
+        radial-gradient(circle at 85% 17%, rgba(255,211,78,.33) 0 9%, transparent 9.3%),
+        linear-gradient(160deg, var(--page), var(--page-2));
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    main {
+      width: min(100%, 570px);
+      min-height: 100svh;
+      margin: 0 auto;
+      padding: max(10px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom));
+      display: grid;
+      align-content: center;
+      gap: 8px;
+    }
+    .hud {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 7px;
+      width: 100%;
+    }
+    .meter {
+      min-width: 0;
+      padding: 8px 10px 7px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 5px 14px var(--shadow);
+    }
+    .meter:first-child { border-radius: 16px 7px 7px 16px; }
+    .meter:nth-child(2) { border-radius: 7px; text-align: center; }
+    .meter:last-child { border-radius: 7px 16px 16px 7px; text-align: right; }
+    .meter-label {
+      display: block;
+      font-size: 10px;
+      line-height: 1;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 800;
+      margin-bottom: 3px;
+    }
+    .meter-value {
+      display: block;
+      font-size: clamp(17px, 5vw, 22px);
+      line-height: 1;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+    .lives { display: inline-flex; gap: 4px; justify-content: flex-end; }
+    .life {
+      width: 12px;
+      height: 12px;
+      display: inline-block;
+      background: var(--accent);
+      border-radius: 50% 50% 46% 46%;
+      transform: rotate(-45deg);
+      box-shadow: inset -2px -1px 0 rgba(100,20,20,.16);
+    }
+    .life.off { opacity: .18; background: var(--muted); }
+    .game-shell {
+      position: relative;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 19px 19px 12px 12px;
+      overflow: hidden;
+      background: #dff7ff;
+      box-shadow: 0 14px 30px var(--shadow);
+      isolation: isolate;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 21 / 31;
+      max-height: min(70svh, 690px);
+      object-fit: contain;
+      touch-action: none;
+      cursor: crosshair;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(226,249,255,.73);
+      backdrop-filter: blur(3px);
+      transition: opacity .18s ease;
+    }
+    @media (prefers-color-scheme: dark) {
+      .overlay { background: rgba(9,34,44,.72); }
+    }
+    .overlay[hidden] { display: none; }
+    .dialog {
+      width: min(100%, 330px);
+      padding: 24px 22px 22px;
+      text-align: center;
+      background: var(--panel-solid);
+      border: 2px solid rgba(38,184,187,.28);
+      border-radius: 26px 11px 26px 11px;
+      box-shadow: 0 16px 36px rgba(24,74,88,.23);
+    }
+    .fruit-mark {
+      width: 58px;
+      height: 49px;
+      margin: 0 auto 13px;
+      position: relative;
+    }
+    .fruit-mark::before {
+      content: "";
+      position: absolute;
+      width: 48px;
+      height: 42px;
+      left: 3px;
+      bottom: 0;
+      border-radius: 46% 46% 50% 50%;
+      background: var(--accent);
+      box-shadow: inset -8px -4px 0 rgba(139,38,30,.13);
+    }
+    .fruit-mark::after {
+      content: "";
+      position: absolute;
+      width: 19px;
+      height: 10px;
+      top: 0;
+      left: 29px;
+      border-radius: 100% 0 100% 0;
+      background: #4fac5e;
+      transform: rotate(-19deg);
+    }
+    .dialog h1, .dialog h2 {
+      margin: 0 0 8px;
+      font-size: clamp(27px, 8vw, 38px);
+      line-height: .98;
+      letter-spacing: -.035em;
+    }
+    .dialog p {
+      margin: 0 auto 17px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.4;
+      max-width: 260px;
+    }
+    .primary {
+      appearance: none;
+      border: 0;
+      min-height: 50px;
+      padding: 0 22px;
+      border-radius: 12px 20px 12px 20px;
+      color: #16323a;
+      background: var(--sun);
+      box-shadow: inset 0 -4px 0 rgba(122,88,0,.16), 0 5px 0 rgba(145,78,27,.23);
+      font: 900 15px/1 "Avenir Next", Avenir, sans-serif;
+      letter-spacing: .045em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .primary:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 rgba(122,88,0,.16), 0 2px 0 rgba(145,78,27,.2); }
+    button:focus-visible, canvas:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr 1fr;
+      gap: 8px;
+    }
+    .control {
+      appearance: none;
+      min-height: 49px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: var(--panel);
+      border-radius: 9px;
+      box-shadow: 0 4px 10px var(--shadow);
+      font: 900 16px/1 "Avenir Next", Avenir, sans-serif;
+      touch-action: none;
+      cursor: pointer;
+    }
+    .control.fire {
+      color: var(--button-text);
+      background: var(--sun);
+      border-color: rgba(148,106,0,.2);
+      border-radius: 9px 18px 9px 18px;
+      letter-spacing: .05em;
+    }
+    .control.active, .control:active { transform: translateY(2px); filter: brightness(.96); }
+    .howto {
+      margin: 0;
+      padding: 2px 6px 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .license {
+      margin: 1px 0 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: .03em;
+    }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+    @media (min-width: 760px) {
+      main { padding-block: 18px; }
+      .controls { width: 78%; margin-inline: auto; }
+    }
+    @media (max-height: 700px) {
+      main { align-content: start; }
+      canvas { max-height: 68svh; }
+      .howto, .license { display: none; }
+      .control { min-height: 44px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hud" aria-label="Game status">
+      <div class="meter"><span class="meter-label">Score</span><span class="meter-value" id="score">00000</span></div>
+      <div class="meter"><span class="meter-label">Wave</span><span class="meter-value" id="wave">1</span></div>
+      <div class="meter"><span class="meter-label">Lives</span><span class="meter-value lives" id="lives" aria-label="3 lives"></span></div>
+    </section>
+
+    <section class="game-shell" aria-label="Fruit Invaders game area">
+      <canvas id="game" width="420" height="620" tabindex="0" role="application" aria-label="Arcade game. Move with left and right arrows or drag. Fire with space or by pressing the game area."></canvas>
+      <div class="overlay" id="overlay">
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="stateTitle" aria-describedby="stateText">
+          <div class="fruit-mark" aria-hidden="true"></div>
+          <h1 id="stateTitle">Fruit Invaders</h1>
+          <p id="stateText"><strong>Ready to make a splash?</strong><br>Slide along the garden floor and pop every cheerful crop before it reaches you.</p>
+          <button class="primary" id="stateButton" type="button">Start popping</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="controls" aria-label="Touch controls">
+      <button class="control" id="leftBtn" type="button" aria-label="Move left">◀</button>
+      <button class="control fire" id="fireBtn" type="button">Fire</button>
+      <button class="control" id="rightBtn" type="button" aria-label="Move right">▶</button>
+    </div>
+    <p class="howto">Drag to move · tap or hold to fire · keyboard: ← → and space</p>
+    <p class="license">Original art and code · CC0 public domain</p>
+    <div id="announcer" class="sr-only" aria-live="polite"></div>
+  </main>
+
+<script>
+(function () {
+  "use strict";
+
+  var canvas = document.getElementById("game");
+  var ctx = canvas.getContext("2d");
+  var overlay = document.getElementById("overlay");
+  var stateTitle = document.getElementById("stateTitle");
+  var stateText = document.getElementById("stateText");
+  var stateButton = document.getElementById("stateButton");
+  var scoreEl = document.getElementById("score");
+  var waveEl = document.getElementById("wave");
+  var livesEl = document.getElementById("lives");
+  var announcer = document.getElementById("announcer");
+  var leftBtn = document.getElementById("leftBtn");
+  var rightBtn = document.getElementById("rightBtn");
+  var fireBtn = document.getElementById("fireBtn");
+
+  var W = 420, H = 620;
+  var state = "intro";
+  var score = 0, wave = 1, lives = 3;
+  var enemies = [], shots = [], seeds = [], particles = [], stars = [];
+  var direction = 1;
+  var enemySpeed = 34;
+  var enemyDrop = 17;
+  var seedClock = 0;
+  var elapsed = 0;
+  var last = 0;
+  var fireClock = 0;
+  var invulnerable = 0;
+  var keys = { left: false, right: false, fire: false };
+  var pointer = { active: false, x: W / 2 };
+  var player = { x: W / 2, y: H - 53, w: 47, h: 30, speed: 255 };
+  var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var fruitColors = {
+    apple: ["#f1514b", "#b92e38"],
+    orange: ["#ff9c35", "#e66c20"],
+    carrot: ["#ff8438", "#dc5329"],
+    broccoli: ["#64b85c", "#31874c"],
+    melon: ["#58bd72", "#23895e"]
+  };
+
+  for (var s = 0; s < 42; s++) {
+    stars.push({ x: Math.random() * W, y: Math.random() * H, r: .8 + Math.random() * 1.7, p: Math.random() * 6.28 });
+  }
+
+  function updateHud() {
+    scoreEl.textContent = String(score).padStart(5, "0");
+    waveEl.textContent = String(wave);
+    livesEl.innerHTML = "";
+    for (var i = 0; i < 3; i++) {
+      var pip = document.createElement("span");
+      pip.className = "life" + (i >= lives ? " off" : "");
+      pip.setAttribute("aria-hidden", "true");
+      livesEl.appendChild(pip);
+    }
+    livesEl.setAttribute("aria-label", lives + (lives === 1 ? " life" : " lives"));
+  }
+
+  function showOverlay(title, text, button) {
+    stateTitle.textContent = title;
+    stateText.textContent = text;
+    stateButton.textContent = button;
+    overlay.hidden = false;
+    setTimeout(function () { stateButton.focus(); }, 20);
+  }
+
+  function hideOverlay() {
+    overlay.hidden = true;
+    canvas.focus();
+  }
+
+  function startGame() {
+    score = 0; wave = 1; lives = 3;
+    particles = []; shots = []; seeds = [];
+    buildWave();
+    state = "playing";
+    hideOverlay();
+    updateHud();
+    announcer.textContent = "Game started. Wave 1.";
+  }
+
+  function buildWave() {
+    enemies = [];
+    shots = [];
+    seeds = [];
+    direction = 1;
+    seedClock = 1.15;
+    player.x = W / 2;
+    player.y = H - 53;
+    var rows = Math.min(3 + Math.floor((wave - 1) / 2), 6);
+    var cols = Math.min(6 + Math.floor((wave - 1) / 2), 9);
+    var gapX = 7;
+    var ew = cols >= 9 ? 32 : 36;
+    var total = cols * ew + (cols - 1) * gapX;
+    var startX = (W - total) / 2 + ew / 2;
+    var types = ["apple", "orange", "carrot", "broccoli", "melon"];
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        enemies.push({
+          x: startX + c * (ew + gapX), y: 69 + r * 51,
+          w: ew, h: 36, type: types[(r + c + wave - 1) % types.length],
+          bob: (r * 1.3 + c * .7) % 6.28, alive: true
+        });
+      }
+    }
+    enemySpeed = 25 + wave * 7 + cols * 1.1;
+    enemyDrop = 14 + Math.min(wave, 8);
+  }
+
+  function fire() {
+    if (state !== "playing" || fireClock > 0) return;
+    shots.push({ x: player.x, y: player.y - 18, vy: -435, h: 14 });
+    fireClock = Math.max(.12, .25 - wave * .006);
+    popBurst(player.x, player.y - 17, "#fff2a0", 3, 35);
+  }
+
+  function enemyFire() {
+    var alive = enemies.filter(function (e) { return e.alive; });
+    if (!alive.length) return;
+    var lowerByColumn = {};
+    alive.forEach(function (e) {
+      var key = Math.round(e.x / 10);
+      if (!lowerByColumn[key] || e.y > lowerByColumn[key].y) lowerByColumn[key] = e;
+    });
+    var options = Object.keys(lowerByColumn).map(function (k) { return lowerByColumn[k]; });
+    var source = options[Math.floor(Math.random() * options.length)];
+    seeds.push({ x: source.x, y: source.y + 19, vy: 105 + wave * 8, sway: Math.random() * 6.28 });
+  }
+
+  function popBurst(x, y, color, count, force) {
+    if (reducedMotion) count = Math.min(count, 4);
+    for (var i = 0; i < count; i++) {
+      var a = (Math.PI * 2 * i / count) + Math.random() * .55;
+      var f = force * (.55 + Math.random() * .75);
+      particles.push({ x: x, y: y, vx: Math.cos(a) * f, vy: Math.sin(a) * f - 12, life: .48 + Math.random() * .25, max: .7, r: 2 + Math.random() * 3.5, color: color });
+    }
+  }
+
+  function loseLife(message) {
+    if (state !== "playing" || invulnerable > 0) return;
+    lives--;
+    updateHud();
+    popBurst(player.x, player.y, "#ff7b61", 16, 130);
+    if (lives <= 0) {
+      state = "gameOver";
+      keys.fire = false;
+      showOverlay("Garden overrun", "You juiced " + score + " points across " + wave + (wave === 1 ? " wave." : " waves."), "Play again");
+      announcer.textContent = "Game over. Final score " + score + ".";
+    } else {
+      state = "lifeLost";
+      announcer.textContent = message + " " + lives + " lives left.";
+      setTimeout(function () {
+        buildWave();
+        invulnerable = 1.4;
+        state = "playing";
+      }, 850);
+    }
+  }
+
+  function waveComplete() {
+    if (state !== "playing") return;
+    state = "waveClear";
+    score += 250 * wave;
+    updateHud();
+    popBurst(W / 2, H * .38, "#ffd84f", 24, 175);
+    showOverlay("Wave " + wave + " cleared!", "Fresh rows are gathering. The next wave moves faster and drops more seeds.", "Next wave");
+    announcer.textContent = "Wave " + wave + " complete.";
+  }
+
+  function nextWave() {
+    wave++;
+    buildWave();
+    state = "playing";
+    hideOverlay();
+    updateHud();
+    announcer.textContent = "Wave " + wave + ".";
+  }
+
+  function intersects(ax, ay, aw, ah, bx, by, bw, bh) {
+    return Math.abs(ax - bx) < (aw + bw) / 2 && Math.abs(ay - by) < (ah + bh) / 2;
+  }
+
+  function update(dt) {
+    elapsed += dt;
+    for (var p = particles.length - 1; p >= 0; p--) {
+      var part = particles[p];
+      part.x += part.vx * dt; part.y += part.vy * dt; part.vy += 85 * dt; part.life -= dt;
+      if (part.life <= 0) particles.splice(p, 1);
+    }
+    if (state !== "playing") return;
+
+    invulnerable = Math.max(0, invulnerable - dt);
+    fireClock = Math.max(0, fireClock - dt);
+    var move = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    if (move) player.x += move * player.speed * dt;
+    if (pointer.active) player.x += (pointer.x - player.x) * Math.min(1, dt * 13);
+    player.x = Math.max(player.w / 2 + 7, Math.min(W - player.w / 2 - 7, player.x));
+    if (keys.fire || pointer.active) fire();
+
+    var hitEdge = false;
+    enemies.forEach(function (e) {
+      if (!e.alive) return;
+      e.x += direction * enemySpeed * dt;
+      e.bob += dt * 2;
+      if (e.x + e.w / 2 > W - 12 || e.x - e.w / 2 < 12) hitEdge = true;
+    });
+    if (hitEdge) {
+      direction *= -1;
+      enemies.forEach(function (e) {
+        if (!e.alive) return;
+        e.x = Math.max(14 + e.w / 2, Math.min(W - 14 - e.w / 2, e.x));
+        e.y += enemyDrop;
+      });
+    }
+
+    seedClock -= dt;
+    if (seedClock <= 0) {
+      enemyFire();
+      seedClock = Math.max(.35, 1.42 - wave * .08) * (.75 + Math.random() * .6);
+    }
+
+    for (var i = shots.length - 1; i >= 0; i--) {
+      var shot = shots[i];
+      shot.y += shot.vy * dt;
+      var struck = false;
+      for (var j = 0; j < enemies.length; j++) {
+        var enemy = enemies[j];
+        if (enemy.alive && intersects(shot.x, shot.y, 5, shot.h, enemy.x, enemy.y, enemy.w, enemy.h)) {
+          enemy.alive = false;
+          struck = true;
+          var colors = fruitColors[enemy.type];
+          popBurst(enemy.x, enemy.y, colors[0], 13, 108);
+          score += 20 + wave * 5;
+          updateHud();
+          break;
+        }
+      }
+      if (struck || shot.y < -20) shots.splice(i, 1);
+    }
+
+    for (var k = seeds.length - 1; k >= 0; k--) {
+      var seed = seeds[k];
+      seed.y += seed.vy * dt;
+      seed.x += Math.sin(elapsed * 4 + seed.sway) * 12 * dt;
+      if (invulnerable <= 0 && intersects(seed.x, seed.y, 9, 13, player.x, player.y, player.w * .75, player.h * .72)) {
+        seeds.splice(k, 1);
+        loseLife("A seed splashed your ship.");
+        return;
+      }
+      if (seed.y > H + 20) seeds.splice(k, 1);
+    }
+
+    var aliveCount = 0;
+    for (var eIndex = 0; eIndex < enemies.length; eIndex++) {
+      var en = enemies[eIndex];
+      if (!en.alive) continue;
+      aliveCount++;
+      if (en.y + en.h / 2 >= player.y - player.h / 2 - 3 || intersects(en.x, en.y, en.w, en.h, player.x, player.y, player.w, player.h)) {
+        loseLife("The garden reached your ship.");
+        return;
+      }
+    }
+    if (aliveCount === 0) waveComplete();
+  }
+
+  function roundedRect(x, y, w, h, r) {
+    var rr = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y); ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr); ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr); ctx.closePath();
+  }
+
+  function drawBackground() {
+    var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var grad = ctx.createLinearGradient(0, 0, 0, H);
+    if (dark) { grad.addColorStop(0, "#123d51"); grad.addColorStop(.7, "#1d6670"); grad.addColorStop(1, "#174b55"); }
+    else { grad.addColorStop(0, "#dff8ff"); grad.addColorStop(.72, "#98e4e0"); grad.addColorStop(1, "#71cbb8"); }
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    stars.forEach(function (star) {
+      var alpha = .25 + .16 * Math.sin(elapsed * .8 + star.p);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = dark ? "#dbffff" : "#ffffff";
+      ctx.beginPath(); ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.restore();
+
+    ctx.fillStyle = dark ? "#1d6e61" : "#43a878";
+    ctx.beginPath(); ctx.moveTo(0, H - 29);
+    for (var x = 0; x <= W; x += 14) {
+      ctx.lineTo(x, H - 30 - ((x / 14) % 2) * 8);
+    }
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = dark ? "rgba(9,39,43,.22)" : "rgba(255,255,255,.18)";
+    ctx.fillRect(0, H - 16, W, 16);
+  }
+
+  function drawFace(x, y, scale) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+    ctx.fillStyle = "#173d42";
+    ctx.beginPath(); ctx.arc(-5, -1, 1.45, 0, Math.PI * 2); ctx.arc(5, -1, 1.45, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#173d42"; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.arc(0, 1, 4, .2, Math.PI - .2); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawEnemy(e) {
+    var yy = e.y + Math.sin(e.bob) * 1.5;
+    var w = e.w, colors = fruitColors[e.type];
+    ctx.save(); ctx.translate(e.x, yy);
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    if (e.type === "apple") {
+      ctx.fillStyle = colors[0];
+      ctx.beginPath(); ctx.arc(-6, 2, w * .29, 0, Math.PI * 2); ctx.arc(6, 2, w * .29, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = colors[1]; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(2,-14); ctx.stroke();
+      ctx.fillStyle = "#54a952"; ctx.beginPath(); ctx.ellipse(7,-12,6,3,-.45,0,Math.PI*2); ctx.fill();
+      drawFace(0, 3, .9);
+    } else if (e.type === "orange") {
+      ctx.fillStyle = colors[0]; ctx.beginPath(); ctx.arc(0, 1, w * .36, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = colors[1]; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0,1,w*.3,.2,2.3); ctx.stroke();
+      ctx.fillStyle = "#63ad49"; ctx.beginPath(); ctx.ellipse(4,-12,6,2.8,-.3,0,Math.PI*2); ctx.fill();
+      drawFace(0, 3, .92);
+    } else if (e.type === "carrot") {
+      ctx.fillStyle = colors[0]; ctx.beginPath(); ctx.moveTo(-12,-8); ctx.quadraticCurveTo(0,-12,12,-8); ctx.lineTo(1,17); ctx.quadraticCurveTo(0,20,-2,16); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "#31975a"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-5,-9);ctx.lineTo(-10,-17);ctx.moveTo(0,-10);ctx.lineTo(0,-19);ctx.moveTo(5,-9);ctx.lineTo(10,-17);ctx.stroke();
+      drawFace(0, 0, .85);
+    } else if (e.type === "broccoli") {
+      ctx.fillStyle = "#7abf62"; roundedRect(-7,0,14,18,5); ctx.fill();
+      ctx.fillStyle = colors[1];
+      ctx.beginPath(); ctx.arc(-9,-4,9,0,Math.PI*2);ctx.arc(0,-9,11,0,Math.PI*2);ctx.arc(10,-4,9,0,Math.PI*2);ctx.arc(1,0,10,0,Math.PI*2);ctx.fill();
+      drawFace(0, -5, .85);
+    } else {
+      ctx.fillStyle = colors[0]; ctx.beginPath(); ctx.ellipse(0,1,w*.43,w*.32,0,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = colors[1]; ctx.lineWidth = 2;
+      [-8,0,8].forEach(function(xx){ctx.beginPath();ctx.arc(xx,1,Math.max(2,w*.18),-1.2,1.2);ctx.stroke();});
+      drawFace(0, 3, .9);
+    }
+    ctx.restore();
+  }
+
+  function drawPlayer() {
+    if (invulnerable > 0 && Math.floor(invulnerable * 10) % 2 === 0) return;
+    ctx.save(); ctx.translate(player.x, player.y);
+    ctx.fillStyle = "rgba(15,73,78,.2)"; ctx.beginPath(); ctx.ellipse(0, 19, 30, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ff735a";
+    ctx.beginPath(); ctx.moveTo(-24,10); ctx.lineTo(-33,16); ctx.lineTo(-24,-7); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(24,10); ctx.lineTo(33,16); ctx.lineTo(24,-7); ctx.closePath(); ctx.fill();
+    var body = ctx.createLinearGradient(0,-18,0,16); body.addColorStop(0,"#eaffff"); body.addColorStop(1,"#35bdc1");
+    ctx.fillStyle = body; ctx.beginPath(); ctx.moveTo(0,-22); ctx.quadraticCurveTo(23,-5,25,14); ctx.quadraticCurveTo(0,20,-25,14); ctx.quadraticCurveTo(-23,-5,0,-22); ctx.fill();
+    ctx.strokeStyle = "#167988"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = "#ffd34e"; ctx.beginPath(); ctx.ellipse(0,-5,8,6,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = "#1b626e"; ctx.beginPath();ctx.arc(-3,-6,1.2,0,Math.PI*2);ctx.arc(3,-6,1.2,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle="#1b626e";ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(0,-4,3,.2,Math.PI-.2);ctx.stroke();
+    ctx.restore();
+  }
+
+  function draw() {
+    drawBackground();
+    enemies.forEach(function (e) { if (e.alive) drawEnemy(e); });
+    ctx.save();
+    shots.forEach(function (shot) {
+      var g = ctx.createLinearGradient(0, shot.y - 8, 0, shot.y + 8); g.addColorStop(0,"#fffef1"); g.addColorStop(1,"#ffd441");
+      ctx.strokeStyle = g; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(shot.x,shot.y-7);ctx.lineTo(shot.x,shot.y+7);ctx.stroke();
+    });
+    seeds.forEach(function (seed) {
+      ctx.fillStyle = "#57402d"; ctx.beginPath(); ctx.ellipse(seed.x,seed.y,4,7,.2,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = "#9c764d"; ctx.beginPath(); ctx.ellipse(seed.x-1,seed.y-2,1.1,2.4,.2,0,Math.PI*2);ctx.fill();
+    });
+    particles.forEach(function (part) {
+      ctx.globalAlpha = Math.max(0, part.life / part.max); ctx.fillStyle = part.color; ctx.beginPath();ctx.arc(part.x,part.y,part.r,0,Math.PI*2);ctx.fill();
+    });
+    ctx.restore();
+    if (state !== "intro") drawPlayer();
+    if (state === "lifeLost") {
+      ctx.save(); ctx.textAlign="center"; ctx.fillStyle="rgba(255,255,255,.95)"; ctx.font="900 27px Avenir Next, sans-serif"; ctx.fillText("SPLASH!",W/2,H*.48); ctx.restore();
+    }
+  }
+
+  function frame(t) {
+    var dt = Math.min(.033, (t - last) / 1000 || 0); last = t;
+    update(dt); draw(); requestAnimationFrame(frame);
+  }
+
+  stateButton.addEventListener("click", function () {
+    if (state === "intro" || state === "gameOver") startGame();
+    else if (state === "waveClear") nextWave();
+  });
+
+  function setButtonHold(button, prop, on) {
+    keys[prop] = on;
+    button.classList.toggle("active", on);
+    if (prop === "fire" && on) fire();
+  }
+  [[leftBtn,"left"],[rightBtn,"right"],[fireBtn,"fire"]].forEach(function (pair) {
+    var btn = pair[0], prop = pair[1];
+    btn.addEventListener("pointerdown", function (e) { e.preventDefault(); btn.setPointerCapture(e.pointerId); setButtonHold(btn, prop, true); });
+    btn.addEventListener("pointerup", function () { setButtonHold(btn, prop, false); });
+    btn.addEventListener("pointercancel", function () { setButtonHold(btn, prop, false); });
+    btn.addEventListener("lostpointercapture", function () { setButtonHold(btn, prop, false); });
+  });
+
+  function pointerX(e) {
+    var rect = canvas.getBoundingClientRect();
+    return Math.max(0, Math.min(W, (e.clientX - rect.left) * W / rect.width));
+  }
+  canvas.addEventListener("pointerdown", function (e) {
+    if (state !== "playing") return;
+    e.preventDefault(); canvas.setPointerCapture(e.pointerId); pointer.active = true; pointer.x = pointerX(e); fire();
+  });
+  canvas.addEventListener("pointermove", function (e) { if (pointer.active) { e.preventDefault(); pointer.x = pointerX(e); } });
+  function endPointer() { pointer.active = false; }
+  canvas.addEventListener("pointerup", endPointer); canvas.addEventListener("pointercancel", endPointer); canvas.addEventListener("lostpointercapture", endPointer);
+
+  window.addEventListener("keydown", function (e) {
+    if (["ArrowLeft","ArrowRight"," ","a","A","d","D"].indexOf(e.key) >= 0) e.preventDefault();
+    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keys.left = true;
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.right = true;
+    if (e.key === " ") { keys.fire = true; fire(); }
+    if ((e.key === "Enter" || e.key === " ") && state === "intro" && document.activeElement === canvas) startGame();
+  });
+  window.addEventListener("keyup", function (e) {
+    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keys.left = false;
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.right = false;
+    if (e.key === " ") keys.fire = false;
+  });
+  window.addEventListener("blur", function () { keys.left = keys.right = keys.fire = false; pointer.active = false; });
+
+  updateHud();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
