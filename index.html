@@ -68,6 +68,22 @@
       align-content: center;
       gap: 8px;
     }
+    .topbar { display: flex; justify-content: flex-end; }
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 13px;
+      border-radius: 999px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 4px 10px var(--shadow);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      text-decoration: none;
+    }
+    .home-link:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
     .hud {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -273,6 +289,7 @@
 </head>
 <body>
   <main>
+    <div class="topbar"><a class="home-link" href="https://jesuslovestyler.com/">⌂ Home</a></div>
     <section class="hud" aria-label="Game status">
       <div class="meter"><span class="meter-label">Score</span><span class="meter-value" id="score">00000</span></div>
       <div class="meter"><span class="meter-label">Wave</span><span class="meter-value" id="wave">1</span></div>
@@ -735,5 +752,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
+<script data-goatcounter="https://jesuslovestyler.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
