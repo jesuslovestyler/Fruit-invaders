@@ -1,11 +1,8 @@
 # Fruit Invaders
 
-An original space-shooter arcade game — our own ship, enemies, art, and code, released to the public domain.
+A free arcade game you play in your browser: the fruit are descending from above — blast them out of the sky before they land.
 
-Rows of cheerful cartoon fruits and vegetables march down the screen; your garden ship pops them in satisfying juice bursts. Three lives, escalating waves, seed hazards, and clear wave-complete and game-over flows.
+**Live:** https://jesuslovestyler.github.io/Fruit-invaders/
+**Home:** https://jesuslovestyler.com/
 
-Drag, tap, and hold on phones; arrow keys and space on desktop.
-
-No saved data, no ads, no tracking — a fresh run every visit. The gentlest shooter ever made.
-
-Built with Muse artifacts.
+One self-contained page: no account, no ads, nothing to buy. Released into the public domain (Unlicense — see LICENSE). Built by Tyler with Noki.
